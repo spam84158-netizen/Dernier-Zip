@@ -5,13 +5,14 @@ export async function onRequestPost({ request, env }) {
   const token = typeof body?.token === "string" ? body.token : "";
   if (!token || token.length > 2048) return json({success:false,error:"Jeton Cloudflare manquant ou invalide."},400);
   try {
-    const form = new FormData(); form.append("secret",env.TURNSTILE_SECRET); form.append("response",token);
+    const form = new FormData(); form.append("secret",env.TURNSTILE_SECRET.trim()); form.append("response",token);
     const ip=request.headers.get("CF-Connecting-IP"); if(ip) form.append("remoteip",ip);
     const check=await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify",{method:"POST",body:form});
     const result=await check.json();
-    if(!check.ok || result.success!==true || result.action!=="login") return json({success:false,error:"La vérification Cloudflare a échoué. Réessayez."},403);
     const hostname=new URL(request.url).hostname;
-    if(result.hostname && result.hostname!==hostname) return json({success:false,error:"Domaine de vérification inattendu."},403);
+    const codes=(result["error-codes"]||[]).join(",");
+    if(!check.ok || result.success!==true || result.action!=="login") return json({success:false,error:"La vérification Cloudflare a échoué. Réessayez. ["+(codes||("action="+result.action+" host="+result.hostname))+"]"},403);
+    if(result.hostname && result.hostname!==hostname) return json({success:false,error:"Domaine de vérification inattendu. ["+result.hostname+" != "+hostname+"]"},403);
     return json({success:true});
-  } catch { return json({success:false,error:"Service Cloudflare temporairement indisponible."},502); }
+  } catch (e) { return json({success:false,error:"Service Cloudflare temporairement indisponible. ["+(e&&e.message||"erreur")+"]"},502); }
 }
