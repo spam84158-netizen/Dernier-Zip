@@ -1,0 +1,7 @@
+LOGOS DES MOYENS DE RETRAIT — dépose tes fichiers ici (SVG de préférence, sinon PNG/WebP/JPG), avec ces noms :
+
+  wave.svg      orange.svg     mtn.svg     moov.svg
+  binance.svg   usdt.svg       wallet.svg
+
+Carré ou presque, fond transparent ou blanc, 256 px minimum.
+Si un fichier manque, le site affiche une tuile colorée avec les initiales à la place.
