@@ -159,3 +159,6 @@ html[data-theme="dark"] .rs-ap{--rcard:#131a26;--rtx:#eaf0fa;--rdim:#8d9ab1;--rl
 .panel .set-block{padding:18px 16px!important}
 .topt.on{border-color:#3b6cf5!important;box-shadow:0 0 0 3px rgba(59,108,245,.18)!important}
 html[data-theme="dark"] .topt{background:#1b2536;border-color:#243044}
+
+/* Le bouton de son du fond ne doit jamais couvrir un écran ouvert (messagerie, gains…) */
+html body:has(#scv.on) #scSnd{display:none!important}
