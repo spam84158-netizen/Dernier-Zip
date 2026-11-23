@@ -1,9 +1,9 @@
-SNOW CLOUD CHEK — LOT 1
-Dans Termux, depuis le dossier du dépôt (~/Dernier-Zip) :
+SNOW CLOUD CHEK — LOT 3 (messagerie) — à installer après les lots 1 et 2
 
-  unzip -o ~/storage/downloads/snow-lot1.zip
-  python3 apply_lot1.py
-  git add -A && git commit -m "lot 1" && git push
-
-Puis dépose tes vidéos dans inconnuboy/videos/ (voir inconnuboy/videos/LISEZMOI.txt) et refais un push.
-Le script ne touche pas à tes clés (supabase-config.js, turnstile-config.js, api-config.js).
+1) Base de données : copie supabase/schema_lot3.sql dans le SQL Editor de Supabase et lance-le.
+     termux-clipboard-set < supabase/schema_lot3.sql
+2) Dans Termux, depuis ~/Dernier-Zip :
+     unzip -o ~/storage/downloads/snow-lot3.zip
+     python3 apply_lot3.py
+     git add -A && git commit -m "lot 3" && git push
+Aucune nouvelle variable Cloudflare n'est nécessaire.
