@@ -12,8 +12,6 @@ const usd=n=>'$'+Number(n||0).toFixed(2);
 const fill=(box,...c)=>box.replaceChildren(...c.flat(9).filter(x=>x!=null&&x!==false));
 const debounce=(f,ms)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f(...a),ms);};};
 
-window.SCKit={h,$,$$,tip,html,fill,debounce,pad,fmtDate,get pickFile(){return pickFile;},get squarePng(){return squarePng;}};
-
 /* ============ THÈME CLAIR / SOMBRE / AUTO ============ */
 const sysDark=()=>!!(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);
 const themePref=()=>LS.getItem('sc-theme')||'light';
@@ -201,7 +199,7 @@ async function showResult(o){buildRS();RS.hintT.forEach(clearTimeout);RS.hintT=[
   fill(RS.hero,...(long?[seal,h('div',{},h('h1',{class:'rs-title'},title),numEl)]:[seal,h('h1',{class:'rs-title'},title),sub?h('div',{class:'rs-sub'},sub):null,numEl]));
   const by=o.preview?'@toi (aperçu)':(await whoAmI())||'Invité';
   const rw=o.preview?null:window.__scReward;window.__scReward=null;let chip=null;
-  if(rw&&rw.status==='credited')chip=h('div',{class:'rs-reward'},I('coin',18),window.SCMoney?window.SCMoney.reward(rw):'+'+usd(rw.amount)+' ajoutés à ton solde');
+  if(rw&&rw.status==='credited')chip=h('div',{class:'rs-reward'},I('coin',18),'+'+usd(rw.amount)+' ajoutés à ton solde');
   else if(rw&&rw.status==='cooldown')chip=h('div',{class:'rs-reward soft'},'Numéro déjà récompensé récemment');
   else if(rw&&rw.status==='cap')chip=h('div',{class:'rs-reward soft'},'Limite de gains du jour atteinte');
   if(rw&&rw.status==='credited')doc.dispatchEvent(new CustomEvent('sc-reward',{detail:rw}));
