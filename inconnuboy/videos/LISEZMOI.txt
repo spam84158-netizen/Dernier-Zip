@@ -1,0 +1,12 @@
+VIDÉOS DE SNOW CLOUD CHEK — dépose tes fichiers ici, avec exactement ces noms :
+
+  accueil.mp4       fond de l'écran principal par défaut (l'utilisateur peut le remplacer par sa photo/vidéo)
+  verification.mp4  joue derrière l'écran « Analyse en cours »
+  actif.mp4         joue derrière le résultat « Numéro actif »
+  banni.mp4         joue derrière le résultat « Numéro banni »
+
+Conseils :
+  - Format MP4, vidéo H.264, son AAC (ou sans son : elle jouera alors en silence).
+  - 720p, 8 à 15 secondes, qui boucle bien, moins de 8 Mo chacune (Cloudflare Pages refuse > 25 Mo par fichier).
+  - Si un fichier manque, l'écran garde simplement son fond animé habituel.
+  - Le son se lance après le premier appui de l'utilisateur sur le site (règle des navigateurs).

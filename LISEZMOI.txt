@@ -1,10 +1,9 @@
-SNOW CLOUD CHEK — LOT 2 (à installer après le lot 1)
+SNOW CLOUD CHEK — LOT 1
+Dans Termux, depuis le dossier du dépôt (~/Dernier-Zip) :
 
-1) Base de données : copie supabase/schema_lot2.sql dans le SQL Editor de Supabase et lance-le.
-     termux-clipboard-set < supabase/schema_lot2.sql
-2) Gains automatiques : ajoute dans Cloudflare Pages la variable SB_SERVICE_KEY (type Secret) = clé « service_role » (ou « secret ») de Supabase.
-3) Dans Termux, depuis ~/Dernier-Zip :
-     unzip -o ~/storage/downloads/snow-lot2.zip
-     python3 apply_lot2.py
-     git add -A && git commit -m "lot 2" && git push
-4) Logos de paiement : dépose-les dans inconnuboy/logos/ puis fais un push.
+  unzip -o ~/storage/downloads/snow-lot1.zip
+  python3 apply_lot1.py
+  git add -A && git commit -m "lot 1" && git push
+
+Puis dépose tes vidéos dans inconnuboy/videos/ (voir inconnuboy/videos/LISEZMOI.txt) et refais un push.
+Le script ne touche pas à tes clés (supabase-config.js, turnstile-config.js, api-config.js).

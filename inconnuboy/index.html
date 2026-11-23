@@ -332,9 +332,11 @@ img{max-width:100%;display:block;}
 <link rel="stylesheet" href="./design.css">
 <link rel="stylesheet" href="./shell.css">
 <link rel="stylesheet" href="./polish.css">
+<link rel="stylesheet" href="./snow-v2.css">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
+<script>try{var t=localStorage.getItem("sc-theme");if(t==="dark"||(t==="auto"&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.dataset.theme="dark"}catch(e){}</script>
 </head>
 <body>
 
@@ -886,7 +888,7 @@ $('cbtn').addEventListener('click', async ()=>{
   $('cbtn').disabled = true;
   $('spin').classList.add('active');
   const ctrl = new AbortController();
-  const timeout = setTimeout(()=>ctrl.abort(), 20000);
+  const timeout = setTimeout(()=>ctrl.abort(), 55000);
   try{
     const res = await fetch(PROXY_URL, {
       method:'POST', headers:{'Content-Type':'application/json', 'Accept':'application/json'},
@@ -980,6 +982,7 @@ function toast(msg){
 <script src="./chek-extra.js"></script>
 <script src="./platform.js"></script>
 <script src="./shell.js"></script>
+<script src="./snow-v2.js"></script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script>
 </body>
 </html>
