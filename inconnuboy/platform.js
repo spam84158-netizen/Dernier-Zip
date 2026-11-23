@@ -49,7 +49,7 @@ function vAuth(){const A={fr:['Commençons à construire','Connectez-vous ou ins
   el('div',{class:'row'},t('mail'),el('a',{on:{click:async()=>{const r=await sb.auth.resetPasswordForEmail(e.value,{redirectTo:location.origin+location.pathname});r.error?err(r.error):toast('✉️');}}},A[2])),e,p,
   verifyBox,loginBtn,
   el('button',{class:'b g',style:'width:100%',on:{click:async()=>{const r=await sb.auth.signUp({email:e.value,password:p.value,options:{emailRedirectTo:location.origin+location.pathname}});r.error?err(r.error):toast('✉️ '+t('mail'));}}},A[4]),
-  el('div',{class:'or'},A[7]),el('div',{class:'tiles'},oa('google','fa-brands fa-google','Google'),oa('github','fa-brands fa-github','GitHub'),oa('azure','fa-brands fa-microsoft','Microsoft')),
+  el('div',{class:'or'},A[7]),el('div',{class:'tiles'},oa('google','fa-brands fa-google','Google'),oa('github','fa-brands fa-github','GitHub')),
   el('div',{class:'lg'},el('a',{on:{click:()=>window.SCdocs&&window.SCdocs()}},A[5]),el('a',{on:{click:()=>window.SCdocs&&window.SCdocs()}},A[6]))));
  loginBtn.addEventListener('click',async()=>{if(loginBtn.disabled||!await verifyCaptcha())return;loginBtn.disabled=true;const r=await sb.auth.signInWithPassword({email:e.value,password:p.value});if(r.error){err(r.error);if(window.turnstile&&turnstileWidget!==null)window.turnstile.reset(turnstileWidget);}});
  const ready=()=>{if(window.turnstile)renderCaptcha();};
