@@ -12,7 +12,7 @@ const usd=n=>'$'+Number(n||0).toFixed(2);
 const fill=(box,...c)=>box.replaceChildren(...c.flat(9).filter(x=>x!=null&&x!==false));
 const debounce=(f,ms)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f(...a),ms);};};
 
-window.SCKit={h,$,$$,tip,html,fill,debounce,pad,fmtDate,get pickFile(){return pickFile;},get squarePng(){return squarePng;}};
+window.SCKit={h,$,$$,tip,html,fill,debounce,pad,fmtDate,get pickFile(){return pickFile;},get squarePng(){return squarePng;},get setTheme(){return setTheme;},get themePref(){return themePref;}};
 
 /* ============ THÈME CLAIR / SOMBRE / AUTO ============ */
 const sysDark=()=>!!(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);
@@ -63,14 +63,27 @@ const SC=window.SC,sb=SC&&SC.sb;
 window.__scReward=null;
 const _fetch=window.fetch.bind(window);
 const sameOrigin=u=>u.startsWith('/')||u.startsWith(location.origin);
+const UPSTREAM='https://inconnu-check-ban-api.onrender.com';
+const fetchT=(url,opts,ms)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);return _fetch(url,{...opts,signal:c.signal}).finally(()=>clearTimeout(t));};
 window.fetch=async function(input,init){
   const url=typeof input==='string'?input:(input&&input.url)||'';
   if(!/\/api\/check(\?|$)/.test(url)||!init||String(init.method||'GET').toUpperCase()!=='POST'||!sameOrigin(url))return _fetch(input,init);
   const headers=new Headers(init.headers||{});
-  if(sb){try{const{data}=await sb.auth.getSession();const tk=data&&data.session&&data.session.access_token;if(tk)headers.set('Authorization','Bearer '+tk);}catch(_){}}
-  const res=await _fetch(input,{...init,headers});
-  try{const d=await res.clone().json();window.__scReward=(d&&d.reward)||null;}catch(_){window.__scReward=null;}
-  return res;};
+  if(sb){try{const r=await Promise.race([sb.auth.getSession(),new Promise(res=>setTimeout(()=>res(null),1500))]);const tk=r&&r.data&&r.data.session&&r.data.session.access_token;if(tk)headers.set('Authorization','Bearer '+tk);}catch(_){}}
+  // 1) via le serveur du site (gains, mémoire, reprises) — jamais plus de 32 s
+  const ctl=new AbortController(),us=init.signal,tm=setTimeout(()=>ctl.abort(),32000);
+  if(us){if(us.aborted)ctl.abort();else us.addEventListener('abort',()=>ctl.abort(),{once:true});}
+  let res=null;
+  try{res=await _fetch(input,{...init,headers,signal:ctl.signal});}catch(e){if(us&&us.aborted){clearTimeout(tm);throw e;}}
+  clearTimeout(tm);
+  if(res&&res.status!==429&&res.status<500){try{const d=await res.clone().json();window.__scReward=(d&&d.reward)||null;}catch(_){window.__scReward=null;}return res;}
+  // 2) repli : le navigateur interroge directement l'API (depuis l'adresse de l'utilisateur)
+  try{const raw=JSON.parse(init.body||'{}'),digits=String(raw.number||'').replace(/\D/g,'');
+    if(digits.length>=8&&digits.length<=15){const r2=await fetchT(UPSTREAM+'/check',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({number:'+'+digits})},15000);
+      if(r2.ok){const d2=await r2.json();if(d2&&typeof d2.banned==='boolean'&&!d2.error){window.__scReward=null;
+        return new Response(JSON.stringify({success:true,number:'+'+digits,banned:d2.banned,status:d2.banned?'banned':'not_banned',reason:typeof d2.reason==='string'?d2.reason:'',checkedAt:new Date().toISOString(),reward:{status:'direct'},via:'direct'}),{status:200,headers:{'Content-Type':'application/json'}});}}}}catch(_){}
+  if(res)return res;
+  throw new TypeError('Service de vérification injoignable');};
 // Réveille le service de vérification (Render s'endort) : à l'ouverture, puis au retour sur l'onglet
 {let last=0;const warm=()=>{if(Date.now()-last<3e5)return;last=Date.now();_fetch('/api/check',{method:'GET'}).catch(()=>{});};warm();doc.addEventListener('visibilitychange',()=>{if(doc.visibilityState==='visible')warm();});}
 let authorName=null;

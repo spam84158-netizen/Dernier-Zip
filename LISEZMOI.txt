@@ -1,10 +1,14 @@
-SNOW CLOUD CHEK — LOT 2 (à installer après le lot 1)
+SNOW CLOUD CHEK — LOT 4 + CORRECTIFS
 
-1) Base de données : copie supabase/schema_lot2.sql dans le SQL Editor de Supabase et lance-le.
-     termux-clipboard-set < supabase/schema_lot2.sql
-2) Gains automatiques : ajoute dans Cloudflare Pages la variable SB_SERVICE_KEY (type Secret) = clé « service_role » (ou « secret ») de Supabase.
-3) Dans Termux, depuis ~/Dernier-Zip :
-     unzip -o ~/storage/downloads/snow-lot2.zip
-     python3 apply_lot2.py
-     git add -A && git commit -m "lot 2" && git push
-4) Logos de paiement : dépose-les dans inconnuboy/logos/ puis fais un push.
+1) Supabase (une fois) — SQL de réparation du parrainage + diagnostic :
+     termux-clipboard-set < supabase/schema_fix.sql      (puis coller dans le SQL Editor et lancer)
+   Le tableau final dit ce qui est installé (true) ou manquant (false).
+
+2) Dans Termux, depuis ~/Dernier-Zip :
+     rm -rf /tmp/snow4 && unzip -oq ~/storage/downloads/snow-lot4.zip -d /tmp/snow4
+     python3 /tmp/snow4/apply_lot4.py
+     git add -A && git commit -m "lot 4 et correctifs" && git push
+
+3) Si le check pose encore problème, deux commandes de diagnostic :
+     curl -s "https://snow-cloud-chek.pages.dev/api/check?diag=1"
+     curl -s -m 60 -X POST https://snow-cloud-chek.pages.dev/api/check -H "Content-Type: application/json" -d '{"number":"+2250556333313"}' -w "\nHTTP %{http_code} en %{time_total}s\n"

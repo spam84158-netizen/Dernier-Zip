@@ -33,6 +33,9 @@ function interpretBanStatus(raw) {
 
 const bases = (env) => String(env.BANCHECK_API_URL || DEFAULT_API).split(",").map((s) => s.trim().replace(/\/+$/, "")).filter(Boolean);
 const isTimeout = (e) => e && (e.name === "TimeoutError" || e.name === "AbortError");
+// Minuterie portable : renvoie { signal, done } ; done() libère le minuteur.
+function timer(ms) { const c = new AbortController(); const t = setTimeout(() => c.abort(), ms); return { signal: c.signal, done: () => clearTimeout(t) }; }
+async function fetchT(url, opts, ms) { const t = timer(ms); try { return await fetch(url, { ...opts, signal: t.signal }); } finally { t.done(); } }
 
 function friendly(status, err) {
   if (status === 429) return "Le service de vérification est saturé. Réessaie dans quelques secondes.";
@@ -40,27 +43,22 @@ function friendly(status, err) {
   return "Le service de vérification est momentanément indisponible. Réessaie dans un instant.";
 }
 
-// Appelle l'API avec reprises. Renvoie { data } ou { error }.
+// Appelle l'API avec reprises limitées : on ne martèle pas une API qui répond « trop de requêtes ».
 async function callUpstream(env, number) {
   const list = bases(env);
-  const budget = Math.max(3000, Math.min(Number(env.BANCHECK_BUDGET_MS) || 48000, 55000));
-  const perTry = Math.max(1000, Math.min(Number(env.BANCHECK_TIMEOUT_MS) || 20000, 30000));
-  const backoff = Math.max(1, Number(env.BANCHECK_BACKOFF_MS) || 1200);
+  const budget = Math.max(3000, Math.min(Number(env.BANCHECK_BUDGET_MS) || 26000, 40000));
+  const perTry = Math.max(1000, Math.min(Number(env.BANCHECK_TIMEOUT_MS) || 12000, 25000));
+  const backoff = Math.max(1, Number(env.BANCHECK_BACKOFF_MS) || 1000);
   const minLeft = Math.min(2500, Math.floor(budget / 3));
   const t0 = Date.now();
-  let attempt = 0, lastStatus = 0, lastErr = "";
+  let attempt = 0, lastStatus = 0, lastErr = "", rate = 0;
   while (true) {
     const left = budget - (Date.now() - t0);
     if (left < minLeft) break;
     const base = list[attempt % list.length];
-    let wait = Math.min(backoff * (attempt + 1), 4000);
+    let wait = Math.min(backoff * (attempt + 1), 3000);
     try {
-      const r = await fetch(base + "/check", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ number }),
-        signal: AbortSignal.timeout(Math.min(perTry, left))
-      });
+      const r = await fetchT(base + "/check", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ number }) }, Math.min(perTry, left));
       lastStatus = r.status;
       if (r.ok) {
         const data = await r.json().catch(() => null);
@@ -70,8 +68,9 @@ async function callUpstream(env, number) {
         const d = await r.json().catch(() => null);
         return { data: d || { error: "Numéro refusé par le service." } };
       } else {
+        if (r.status === 429) { rate++; if (rate >= 2 && list.length === 1) break; }
         const ra = Number(r.headers.get && r.headers.get("Retry-After"));
-        if (ra > 0) wait = Math.min(ra * 1000, 5000);
+        if (ra > 0) wait = Math.min(ra * 1000, 4000);
       }
     } catch (e) {
       lastErr = isTimeout(e) ? "timeout" : String((e && e.message) || "réseau");
@@ -86,7 +85,7 @@ async function callUpstream(env, number) {
 
 const cacheKey = (number) => new Request("https://snow-cache.invalid/check/" + encodeURIComponent(number));
 async function cacheGet(number) {
-  try { if (typeof caches === "undefined" || !caches.default) return null; const r = await caches.default.match(cacheKey(number)); return r ? await r.json() : null; } catch { return null; }
+  try { if (typeof caches === "undefined" || !caches.default) return null; const r = await Promise.race([caches.default.match(cacheKey(number)), sleep(800).then(() => null)]); return r ? await r.json() : null; } catch { return null; }
 }
 async function cachePut(env, number, payload) {
   try {
@@ -105,15 +104,13 @@ async function award(env, request, number, status) {
   if (!m) return null; // visiteur non connecté : pas de gain
   const base = String(env.SB_URL || DEFAULT_SB_URL).replace(/\/+$/, "");
   try {
-    const u = await fetch(base + "/auth/v1/user", { headers: { apikey: key, Authorization: "Bearer " + m[1] }, signal: AbortSignal.timeout(6000) });
+    const u = await fetchT(base + "/auth/v1/user", { headers: { apikey: key, Authorization: "Bearer " + m[1] } }, 3000);
     if (!u.ok) return null;
     const user = await u.json().catch(() => null);
     if (!user || !user.id) return null;
     const headers = { apikey: key, "Content-Type": "application/json" };
     if (key.startsWith("eyJ")) headers.Authorization = "Bearer " + key; // les nouvelles clés sb_secret_ n'en ont pas besoin
-    const r = await fetch(base + "/rest/v1/rpc/award_check", {
-      method: "POST", headers, body: JSON.stringify({ p_user: user.id, p_number: number, p_status: status }), signal: AbortSignal.timeout(8000)
-    });
+    const r = await fetchT(base + "/rest/v1/rpc/award_check", { method: "POST", headers, body: JSON.stringify({ p_user: user.id, p_number: number, p_status: status }) }, 4000);
     if (!r.ok) return { status: "error" };
     const out = await r.json().catch(() => null);
     return out && typeof out === "object" ? out : { status: "error" };
@@ -134,16 +131,23 @@ export async function onRequestPost(context) {
     let st;
     try { st = interpretBanStatus(up.data); } catch (e) { return json({ success: false, error: e.message }, 502); }
     result = { success: true, number, ...st, checkedAt: new Date().toISOString() };
-    if (typeof st.banned === "boolean") await cachePut(env, number, result);
+    if (typeof st.banned === "boolean") { const p = cachePut(env, number, result); if (context.waitUntil) context.waitUntil(p); }
   }
   const reward = typeof result.banned === "boolean" ? await award(env, request, number, result.status) : null;
   return json({ ...result, cached, reward });
 }
 
-// Réveille l'API (les services Render gratuits s'endorment) — appelé discrètement à l'ouverture du site.
+// GET : réveille l'API (Render s'endort). Avec ?diag=1 : renvoie un diagnostic lisible (état de l'API, de la clé serveur, temps de réponse).
 export async function onRequestGet(context) {
-  const env = context.env || {};
-  const ping = fetch(bases(env)[0] + "/", { signal: AbortSignal.timeout(4000) }).catch(() => {});
+  const env = context.env || {}, url = new URL(context.request.url), base = bases(env)[0];
+  if (url.searchParams.get("diag")) {
+    const out = { ok: true, api: base, serviceKey: !!env.SB_SERVICE_KEY, upstream: null };
+    const t0 = Date.now();
+    try { const r = await fetchT(base + "/check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ number: "+2250556333313" }) }, 12000); out.upstream = { status: r.status, ms: Date.now() - t0, body: (await r.text().catch(() => "")).slice(0, 120) }; }
+    catch (e) { out.upstream = { status: 0, ms: Date.now() - t0, error: String((e && e.name) || e) }; }
+    return json(out);
+  }
+  const ping = fetchT(base + "/", {}, 4000).catch(() => {});
   if (context.waitUntil) context.waitUntil(ping); else await ping;
   return json({ ok: true });
 }

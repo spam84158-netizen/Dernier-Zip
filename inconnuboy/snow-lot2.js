@@ -16,7 +16,7 @@ const nf=n=>Math.round(Number(n)||0).toLocaleString('fr-FR').replace(/[\u202f\u0
 const toF=usd=>usd*RT().fcfa_per_usd,toP=usd=>toF(usd)/RT().fcfa_per_pt,toUsd=pts=>pts*RT().fcfa_per_pt/RT().fcfa_per_usd;
 const money=(usd,c)=>(c||curPref())==='USD'?'$'+(+usd||0).toFixed(2):nf(toF(usd))+' FCFA';
 const pts=usd=>nf(toP(usd))+' pts';
-window.SCMoney={load:loadSettings,reward:rw=>'+'+nf(rw.points!=null?rw.points:toP(rw.amount))+' pts · '+money(rw.amount)+' ajoutés à ton solde'};
+window.SCMoney={load:loadSettings,money:(usd,c)=>money(usd,c),pts:usd=>nf(toP(usd))+' pts',cur:curPref,reward:rw=>'+'+nf(rw.points!=null?rw.points:toP(rw.amount))+' pts · '+money(rw.amount)+' ajoutés à ton solde'};
 loadSettings();
 
 /* ============ SESSION ============ */
@@ -153,7 +153,9 @@ let qrLib=null;
 function loadQr(){if(window.qrcode)return Promise.resolve(window.qrcode);if(qrLib)return qrLib;qrLib=new Promise((res,rej)=>{const s=h('script',{src:'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js'});s.onload=()=>res(window.qrcode);s.onerror=rej;doc.head.append(s);});return qrLib;}
 function savePng(svg,name){const x=new XMLSerializer().serializeToString(svg),img=new Image();img.onload=()=>{const c=doc.createElement('canvas');c.width=c.height=720;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,720,720);g.drawImage(img,40,40,640,640);
   c.toBlob(bl=>{const a=h('a',{href:URL.createObjectURL(bl),download:name});doc.body.append(a);a.click();a.remove();},'image/png');};img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(x);}
-async function vRef(b){const uid=SC.me().id,P=await me(),code=(P&&P.referral_code)||'',link=location.origin+'/?ref='+code,r=RW();
+async function vRef(b){const uid=SC.me().id,P=await me();let code=(P&&P.referral_code)||'';if(!code){try{const{data}=await sb.rpc('ensure_referral_code');if(data){code=String(data);if(P)P.referral_code=code;}}catch(_){}}
+  if(!code){fill(b,h('div',{class:'empty2'},'Ton code de parrainage n’est pas encore disponible. L’administrateur doit exécuter le fichier schema_fix.sql dans Supabase, puis tu rouvres cet onglet.'));return;}
+  const link=location.origin+'/?ref='+code,r=RW();
   const[cl,rf,lst,bn]=await Promise.all([sb.from('ref_clicks').select('n').eq('user_id',uid),sb.from('profiles').select('*',{count:'exact',head:true}).eq('referred_by',uid),sb.rpc('my_referrals'),sb.from('rewards').select('amount').eq('user_id',uid).in('kind',['referral','referral_tier'])]);
   const clicks=(cl.data||[]).reduce((s,x)=>s+(x.n||0),0),signups=rf.count||0,list=lst.data||[],actives=list.filter(x=>x.active).length,earned=(bn.data||[]).reduce((s,x)=>s+Number(x.amount),0);
   const tiers=(r.tiers||[]).slice().sort((a,c)=>a.actives-c.actives),next=tiers.find(t=>t.actives>actives);
